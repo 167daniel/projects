@@ -1,0 +1,285 @@
+---
+title: "Data analysis project - HBO movies scores"
+author: "id1: 207257668, id2: 207231143"
+date: '2022-06-09'
+output:
+  html_document:
+    code_folding: "hide"
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    number_sections: true
+---
+
+# Background
+
+In this research we explore and analyze scores of movies from the HBO streaming platform. This dataset comes from kaggle, and can be found in the link: <https://www.kaggle.com/datasets/rishidamarla/hbo-tv-shows-documentaries-movies-as-of-2020>
+
+We will focus on:
+
+1.  Tidying the data.
+
+2.  Creating visualizations to understand which kind of the distribution of the movies kinds, so we can conduct research accordingly.
+
+3.  Creating tests and models to check a variety of hypotheses.
+
+Our goals are to demonstrate and practice the different methods which we have learned about in the course by examining the relationship between the different features the dataset. The dataset is taken from Kaggle and presents films from the HBO library. each video has information about it's score form rotten tomatoes and IMDb, alongside parameters about its genre.
+
+# Importing data and libraries
+
+```{r}
+options(warn = - 1)  
+library(tidyverse)
+
+hbo_max <- read.csv(file = 'HBO_MAX_Content.csv',  na.strings = c("", "NA"))
+```
+
+# Tidying the data
+
+## Remove duplicates and glimpse
+
+```{r}
+
+# Remove duplicates
+hbo_max <- distinct(hbo_max)
+glimpse(hbo_max)
+```
+
+## Handling nulls in the data
+
+check how many nulls are there:
+
+```{r}
+table(is.na(hbo_max))
+```
+
+check how many nulls are there per column and per row:
+
+```{r}
+#check how many nulls are there per column
+na_count <-sapply(hbo_max, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+print(na_count)
+
+#check how many rows contain nulls
+print(sum(!complete.cases(hbo_max)))
+```
+
+We'd like to avoid deleting too many rows, so we check it there are columns that contains nulls which we can drop.
+
+1.  It can be seen that the 'type' feature has many missing values. Since the only values that does appear in this feature is 'TV', it's not a feature that interest us, and we've decided to drop it.
+2.  Also, rating is a categorical feature which dose not interest us in this project, so we drop it too.
+3.  Moreover, 'imdb_bucket' is also dropped since it dose not interest us.
+
+```{r}
+hbo_max <- subset(hbo_max, select = -c(type, rating, imdb_bucket))
+
+#check how many rows contain nulls
+sum(!complete.cases(hbo_max))
+```
+
+Since there are only 722 rows with nulls, we can understand that the nulls are coming from the feature of 'rotten_score' (which also contains 722 nulls). One of our research questions is based on this specific feature, and therefore it's crucial for us to drop the rest of the rows which contains nulls (the dataset still stays big enough).
+
+```{r}
+hbo_max <- subset(drop_na(hbo_max))
+```
+
+## Normalizing features
+
+The rotten tomatoes score is based on a scale from 0 to 100, and the IMDb score is on a scale of 0 to 10. since in our research we would like to compare between rating values, we normalize the scales.
+
+```{r}
+hbo_max <- mutate(hbo_max, rotten_score = rotten_score/10)
+```
+
+## Renaming features
+
+every feature name which is related to genres begins with "genres\_", which interrupt us, so we substitute them with blank.
+
+```{r}
+hbo_max <- hbo_max %>%
+  rename_with(~ gsub('genres_', '', .x))
+```
+
+# Visualization
+
+We would like to see which genres of movies are the most common in the HBO dataset, since later on we conduct a test on specific genres and we'd like to check if we have enough samples of each genres we'll test.
+
+```{r}
+barplot(sort(colSums(hbo_max[6:33]), decreasing = TRUE), main="Genres Distribution",
+        cex.names=0.7, ylab = "amount", col=rainbow(28), las = 2)
+```
+
+Since there are a lot of drama films, we will be conducting a research on this category, we also want to perform our research on another genre.
+
+We suspect that maybe there are a lot of movies which belongs simultaneously to the drama and other genres. We want to avoid conducting a research on genres that doesn't have enough movies that don't belong also to the drama genre (such as comedian dramas, or dramatic romances). Therefore we check how many movies belong to romance and to another genre simultaneously, using a bar plot, that reflects how many movies belongs to each of the other genres, while not including movies that also belongs to the drama genre:
+
+```{r}
+ drama_comedy_separated <- filter(hbo_max, (!(Drama == 1 & Comedy == 1)))
+drama_romance_separated <- filter(hbo_max, (!(Drama == 1 & Romance == 1)))
+drama_action_separated <- filter(hbo_max, (!(Drama == 1 & Action_Adventure == 1)))
+
+barplot(colSums(drama_comedy_separated[,c('Drama', 'Comedy')]), main="Amount of comedy and drama movies, without dramatic comedis",
+        cex.names=0.7, ylab = "amount", col=c('yellow', 'orange'), las = 2)
+
+barplot(colSums(drama_comedy_separated[,c('Drama', 'Romance')]), main="Amount of romance and drama movies, without dramatic romances",
+        cex.names=0.7, ylab = "amount", col=c('yellow', 'orange'), las = 2)
+
+barplot(colSums(drama_comedy_separated[,c('Drama', 'Action_Adventure')]), main="Amount of action and drama movies, without dramatic action",
+        cex.names=0.7, ylab = "amount", col=c('yellow', 'orange'), las = 2)
+```
+
+We can see that action is the genre with the most films that dose not belong to the drama genre. Also,v there is no point to search for other genres that will have more values than the action genre, since as we have shown in the first bar plot the other genres has significantly less data than the action genre.
+
+# modeling
+
+## Check the difference between ratings of action and drama movies
+
+We would like to check which genre between action and drama has a greater rating expectation. We assume that generally there is no reason that the expectations of two genre scores will be different, we check this assumption using a t-test and base on IMDb scores:
+
+$H_{0}$ : IMDb scores of Drama movies have the same expectation of IMDb scores of action movies.
+
+$H_{1}$ : IMDb scores of Drama movies does not have the same expectation of IMDb scores of action movies.
+
+Since our data is large enough we don't need to assume normality.
+
+```{r}
+#we avoid using the movies which r both action and drama in our hypothesis test
+
+action <- filter(drama_action_separated, Action_Adventure ==1)
+imdb_action <-select(action, imdb_score)
+
+drama <-filter(drama_action_separated, Drama == 1)
+imdb_drama <-select(drama, imdb_score)
+
+t.test(imdb_action, imdb_drama)
+```
+
+```{r}
+plot(density(unlist(imdb_drama)), col = 'red', main ='drama vs action')
+lines(density(unlist(imdb_action)), col = 'blue')
+legend(2.5,0.3, legend=c("drama", "action"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+```
+
+```{r}
+boxplot(unlist(imdb_drama),unlist(imdb_action),names = c("drama", "action"), ylab="IMDb Rating", main="Rating by genere", col=c("pink","grey"))
+```
+
+In general, it can be understood from the density plot and the box-plot that we are probably wrong, by observing the curves samples, it's expectations and it's variance.
+
+Also, we deduct that our assumption was wrong, since the p-value is smaller than alpha (0.05), we reject the null assumption. Maybe the reason that our assumption was wrong, is that people generally prefer dramas.
+
+## Check difference between 90's movies to 2010's movies ratings
+
+We are assuming that overall 90's movies are getting better rates, since now days a lot of low quality movies are produced. Therefore we figured that the the expectation of 90's movies score will be greater than last decade movies score's expectation. We check this assumption using a t-test and base on IMDB scores:
+
+$H_{0}$ : 90's Movies IMDb scores have the higher expected rating values on IMDb than 2010's film ratings.
+
+$H_{1}$ : 90's Movies IMDb scores expected rating values on IMDb is lower than 2010's films rating on IMDB.
+
+Since our data is large enough we don't need to assume normality.
+
+```{r}
+ninetees <- filter(hbo_max, decade == !!"1990-1999")
+movies_90s <-select(ninetees, imdb_score)
+
+recent_decade <- filter(hbo_max, decade == !!'2010-2019')
+movies_2010s <-select(recent_decade, imdb_score)
+
+t.test(movies_2010s,movies_90s, alternative = 'greater')
+```
+
+```{r}
+plot(density(unlist(movies_90s)), col = 'red', main ='90s movies rates VS last decade movies rates')
+lines(density(unlist(movies_2010s)), col = 'blue')
+legend(2.5,0.3, legend=c("90s movies", "last decade movies"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+```
+
+```{r}
+boxplot(unlist(movies_90s),unlist(movies_2010s),names = c("movies_90s", "movies_2010s"), ylab="IMDb Rating", main="Rating by decade", col=c("pink","grey"))
+```
+
+In general, it can be understood from the density plot and the box-plot that we are probably wrong, by observing the curves samples, it's expectations and it's variance.
+
+From the t-test with 0.95 confidence level, Since the p-values is smaller than alpha, we reject the null assumption. The expectation IMDb score of the 90's is smaller than the expectation IMDb score of last decade movies, unlike we expected.
+
+## Correlation and distribution of rotten tomatoes sand IMDb scores
+
+Naturally we assume the scores are correlated. We createplots to get a better understanding of the data distribution.
+
+```{r}
+ggplot(data = action)+
+  ggtitle("action rate on imdb and rotten")+
+  geom_density(aes(x = imdb_score, fill = "imdb"))+
+  geom_density(aes(x = rotten_score
+,  fill = "rotten", alpha = 0.5))
+```
+
+```{r}
+ggplot(data = drama)+
+   ggtitle("drama rate on imdb and rotten")+
+   geom_density(aes(x = imdb_score, fill = "imdb"))+
+   geom_density(aes(x = rotten_score, fill = "rotten", alpha = 0.5))
+```
+
+```{r}
+ggplot(data = hbo_max)+
+   ggtitle("imdb and rotten scores")+
+   geom_density(aes(x = imdb_score, fill = "imdb"))+
+   geom_density(aes(x = rotten_score, fill = "rotten", alpha = 0.5))
+```
+
+From the last three graphs, we can notice that there is a difference in the way that the IMDb score is distributed from the way that the rotten tomato score is distributed. the IMDb rate is very close to a normal distribution, in contrast, the rotten tomato score has a large pick in movies with a good score (a pick around 9) and a smaller pick for really bad scores (around 2-2.5).
+
+```{r}
+imdb <- select(hbo_max, imdb_score)
+imdb_ <- unlist(imdb)
+
+rotten <-select(hbo_max, rotten_score)
+rotten_ <- unlist(rotten)
+```
+
+```{r}
+
+relation <- lm(formula =imdb_ ~ rotten_)
+print(summary(relation))
+```
+
+```{r}
+df<- cbind(imdb, rotten_)
+df<- mutate(df, 
+             high_low_score <- as.numeric(rotten_ > 5)
+            )
+ggplot(data = df, aes(x =imdb_score, y = rotten_))+
+  geom_point()+
+  stat_smooth(method = "lm")
+```
+
+The results reflects that the rotten tomato score is correlated to the IMDb score. We can deduct that because the p-value is smaller than the t-value, which means that we reject the null hypothesis that they are not correlated, and accept the hypothesis that they are.
+
+Nevertheless, the R-squared score is not high, which indicates that not all the variance of the data was explained. from our graph, we can see that the data has a high variance, but a dominant linear orientation- which together makes sense. We did find a relation, but the observations are not perfectly fitted to a linear line.
+
+Following the density plots we draw, we have decided to check a multi-variable linear regression as well. This time, we add a binary variable that divides the data to low and high score in the rotten tomato rating. We do this because the plot showed us that there are two different distributions in the rotten tomatoes score, one for higher scores and another for lower scores.
+
+```{r}
+relation2 <- lm(formula = df$imdb_score ~ df$rotten_*df$high_low_score)
+print(summary(relation2))
+```
+
+We can see a mild improvement in the R-squared, but it's not very significant. However, from the plot, it seems that the orientation to categorize the data this way is aligned with the data distribution.
+
+```{r}
+ggplot(data = df, aes(x =imdb_score, y = rotten_, color = df$high_low_score))+
+  geom_point()+
+  stat_smooth(method = "lm")
+```
+
+```{r}
+ggplot(data = df, aes(x =imdb_score, y = rotten_, group = df$`high_low_score <- as.numeric(rotten_ > 5)`, color = df$high_low_score))+
+  geom_point()+
+  stat_smooth(method = "lm")
+```
+
+In the graph above, both lines confidence interval is very narrow in the middle of each cluster. We think this can verify that the classification of the data to the two clusters preserve an element of the data distribution. We think that the separation is particularly relevant to the bad scores clusters- in the one linear line graph, it seems that the line misses most of the variance of this section of the data, unlike in the second graph.

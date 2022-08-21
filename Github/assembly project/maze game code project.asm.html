@@ -1,0 +1,675 @@
+<html>
+<head>
+       <title>source code: the project.asm</title>
+       <meta name="description" content="source code">
+       <style>
+           a:link {text-decoration: none}
+           a:visited {text-decoration: none}
+           a:hover {text-decoration: none; color:#ff0000}
+       </style>
+</head>
+<body leftmargin=110  rightmargin=110 topmargin=20 bgcolor=#FFFFFF text=#000000 link=blue vlink=blue alink=blue>
+ 
+ 
+<!-- * -->
+ 
+ 
+
+
+
+
+&nbsp; &nbsp;<center> <font color=#FFFFFF> ;</font> <font size=2 face="Terminal"> the project.asm </font></center>
+
+
+
+
+
+
+<!-- START AUTOMATIC ASM TO HTML EXPORT -->
+<pre><font size=2 face="Terminal">
+ 
+<font color=#000064>org</font> 100h 
+ 
+name <font color=#800080>"TheMaze"</font> 
+ 
+ 
+ 
+<font color=#008000>;----------------------------------- </font>
+<font color=#008000>; the great maze! </font>
+<font color=#008000>;  </font>
+<font color=#008000>; By: Daniel Wolkowicz   </font>
+<font color=#008000>;  </font>
+<font color=#008000>;------------------------------------ </font>
+ 
+ 
+<font color=#008000>; </font>
+<font color=#008000>; Constants </font>
+<font color=#008000>;  </font>
+space_ascii     <font color=#000064>EQU</font>     20h 
+ascii_CapQ      <font color=#000064>EQU</font>     51h 
+ascii_SmallQ    <font color=#000064>EQU</font>     71h  
+ascii_left      <font color=#000064>EQU</font>   4B00h 
+ascii_right     <font color=#000064>EQU</font>   4D00h 
+ascii_up        <font color=#000064>EQU</font>   4800h    
+ascii_down      <font color=#000064>EQU</font>   5000h 
+quit            <font color=#000064>EQU</font>      0h 
+left_arrow      <font color=#000064>EQU</font>      1h 
+right_arrow     <font color=#000064>EQU</font>      2h 
+up_arrow        <font color=#000064>EQU</font>      3h 
+down_arrow      <font color=#000064>EQU</font>      4h 
+ignore          <font color=#000064>EQU</font>      5h 
+false           <font color=#000064>EQU</font>      0h 
+true            <font color=#000064>EQU</font>      1h 
+THE_USER        <font color=#000064>EQU</font>      1h <font color=#008000>; the emoji </font>
+SIZE_OF_X       <font color=#000064>EQU</font>     17h <font color=#008000>; twenty one columns, 15h+0Dh,0Ah  </font>
+SIZE_OF_Y       <font color=#000064>EQU</font>     0Ah <font color=#008000>; ten rows   </font>
+SIZE_Xborder    <font color=#000064>EQU</font>     14h <font color=#008000>; twenty one columns </font>
+MINIMUM_Xborder <font color=#000064>EQU</font>      0h <font color=#008000>;column=0 </font>
+SIZE_Yborder    <font color=#000064>EQU</font>     0Ah 
+MINIMUM_Yborder <font color=#000064>EQU</font>      0h 
+ 
+<font color=#008000>; </font>
+<font color=#008000>; Main Function </font>
+<font color=#008000>; </font>
+ 
+<font color=#0000FF>call</font> hide_cursor_and_draw_welcome_message 
+ 
+<font color=#0000FF>call</font> draw_maze                                          <font color=#008000>; draw the maze </font>
+<font color=#0000FF>mov</font>  <font color=#C80000>dl</font>,<font color=#0064C8>[</font>current_x<font color=#0064C8>]</font> 
+<font color=#0000FF>mov</font>  <font color=#C80000>dh</font>,<font color=#0064C8>[</font>current_y<font color=#0064C8>]</font> 
+<font color=#0000FF>mov</font>  <font color=#C80000>al</font>,THE_USER 
+<font color=#0000FF>call</font> draw_char_at_position                              <font color=#008000>; draw the emoji at current position </font>
+ 
+main_loop: 
+ 
+    <font color=#0000FF>call</font> wait_for_key_pressed_and_then_convert_it       <font color=#008000>; wait for user </font>
+    <font color=#0000FF>cmp</font>  <font color=#C80000>al</font>,quit                                        <font color=#008000>; 'q' for quit </font>
+    <font color=#0000FF>je</font>   too_bad_player_is_a_looser 
+    <font color=#0000FF>call</font> Key_to_new_position                            <font color=#008000>; set next position </font>
+    
+    <font color=#0000FF>call</font> check_legal_move                               <font color=#008000>; check if new position is a legal one </font>
+    <font color=#0000FF>cmp</font>  <font color=#C80000>bl</font>,false 
+    <font color=#0000FF>je</font>   main_loop 
+ 
+    <font color=#0000FF>call</font> check_win                                      <font color=#008000>;check if new position is the exit </font>
+    <font color=#0000FF>cmp</font>  <font color=#C80000>bl</font>,1 
+    <font color=#0000FF>je</font>   draw_congrats_and_exit 
+     
+    <font color=#0000FF>mov</font>  <font color=#C80000>dl</font>,<font color=#0064C8>[</font>current_x<font color=#0064C8>]</font>                                  
+    <font color=#0000FF>mov</font>  <font color=#C80000>dh</font>,<font color=#0064C8>[</font>current_y<font color=#0064C8>]</font> 
+    <font color=#0000FF>mov</font>  <font color=#C80000>al</font>,space_ascii                                  
+    <font color=#0000FF>call</font> draw_char_at_position                          <font color=#008000>; draw space at current position </font>
+     
+    <font color=#0000FF>mov</font>  <font color=#C80000>dl</font>,<font color=#0064C8>[</font>next_x<font color=#0064C8>]</font> 
+    <font color=#0000FF>mov</font>  <font color=#C80000>dh</font>,<font color=#0064C8>[</font>next_y<font color=#0064C8>]</font> 
+    <font color=#0000FF>mov</font>  <font color=#C80000>al</font>,THE_USER 
+    <font color=#0000FF>call</font> draw_char_at_position                          <font color=#008000>; draw emoji to next position </font>
+ 
+    <font color=#0000FF>call</font> set_current_position_to_next_position 
+ 
+<font color=#0000FF>jmp</font>  main_loop 
+ 
+draw_congrats_and_exit: 
+     
+  <font color=#0000FF>call</font> draw_congratulations_message    
+ 
+too_bad_player_is_a_looser: 
+ 
+ 
+<font color=#0000FF>ret</font> 
+ 
+<font color=#008000>; </font>
+<font color=#008000>; Memory variables </font>
+<font color=#008000>; </font>
+   next_x                        <font color=#000064>db</font>  0h 
+   next_y                        <font color=#000064>db</font>  0h 
+   current_x                     <font color=#000064>db</font>  1h 
+   current_y                     <font color=#000064>db</font>  1h 
+   the_maze                      <font color=#000064>db</font>  <font color=#800080>'---------------------'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'|   |           |   |'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'--- - --------- - - -'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'|   |       |   | | |'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'- --------- - --- - -'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'|   |     | | |   | |'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'--- - ----- - --- ---'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'|   |   |   |   |   |'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'- ----- - - --- - - -'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'|         |   |   |  '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'---------------------'</font>, 0Dh, 0Ah, 0 
+                                                                                                     
+                                                                                                     
+   welcome_message               <font color=#000064>db</font>  <font color=#800080>'                __                             __           __  __       '</font>, 0Dh, 0Ah,            
+                                 <font color=#000064>db</font>  <font color=#800080>' _      _____  / /________  ____ ___  ___     / /_____     / /_/ /_  ___ '</font>, 0Dh, 0Ah,   
+                                 <font color=#000064>db</font>  <font color=#800080>'| | /| / / _ \/ / ___/ __ \/ __ `__ \/ _ \   / __/ __ \   / __/ __ \/ _ \'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'| |/ |/ /  __/ / /__/ /_/ / / / / / /  __/  / /_/ /_/ /  / /_/ / / /  __/'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'|__/|__/\___/_/\___/\____/_/ /_/ /_/\___/   \__/\____/   \__/_/ /_/\___/ '</font>, 0Dh, 0Ah,                                                  
+                                 <font color=#000064>db</font>  <font color=#800080>'                                                                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                              __                                ______   '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'       ____ _________  ____ _/ /_   ____ ___  ____ _____  ___  / / / /   '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'      / __ `/ ___/ _ \/ __ `/ __/  / __ `__ \/ __ `/_  / / _ \/ / / /    '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'     / /_/ / /  /  __/ /_/ / /_   / / / / / / /_/ / / /_/  __/_/_/_/     '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'     \__, /_/   \___/\__,_/\__/  /_/ /_/ /_/\__,_/ /___/\___(_|_|_)      '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'    /____/                                                               '</font>, 0Dh, 0Ah,  
+                                 <font color=#000064>db</font>  <font color=#800080>'                                                                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'to continue please press any key                                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'if you wanna quit in the middle of the game just press Q                 '</font>, 0Dh, 0Ah,  
+                                 <font color=#000064>db</font>  <font color=#800080>'to move use the arrows on the keyboard'</font>,0 
+   congratulations_message       <font color=#000064>db</font>  <font color=#800080>'                                                   __                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                           _      ______ _      __/ /                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                          | | /| / / __ \ | /| / / /                          '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                          | |/ |/ / /_/ / |/ |/ /_/                           '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                          |__/|__/\____/|__/|__(_)                            '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                                                                              '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'     _                                     _            __                    '</font>, 0Dh, 0Ah,  
+                                 <font color=#000064>db</font>  <font color=#800080>'    (_)_______  ____  ________  __________(_)   _____  / /  __  ______  __  __'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'   / / __  __ \/ __ \/ ___/ _ \/ ___/ ___/ / | / / _ \/ /  / / / / __ \/ / / /'</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'  / / / / / / / /_/ / /  /  __(__  |__  ) /| |/ /  __/_/  / /_/ / /_/ / /_/ / '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>' /_/_/ /_/ /_/ .___/_/   \___/____/____/_/ |___/\___(_)   \__  /\____/\____/  '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'            /_/                                          /____/               '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                _____       _      __             __   __  __                 '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'               / __(_)___  (_)____/ /_  ___  ____/ /  / /_/ /_  ___           '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'              / /_/ / __ \/ / ___/ __ \/ _ \/ __  /  / __/ __ \/ _ \          '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'             / __/ / / / / (__  ) / / /  __/ /_/ /  / /_/ / / /  __/          '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'            /_/ /_/_/ /_/_/____/_/ /_/\___/\____/   \__/_/ /_/\___/           '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                            ____________________  ___                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                           / __  / __  / __  __ \/ _ \                        '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                          / /_/ / /_/ / / / / / /  __/                        '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                          \__  /\____/_/ /_/ /_/\___/                         '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                         /____/                                               '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'                                                                              '</font>, 0Dh, 0Ah, 
+                                 <font color=#000064>db</font>  <font color=#800080>'to exit the game please press any key'</font>,0 
+<font color=#008000>;---------------------------------------------------   </font>
+<font color=#008000>; draw_welcome_message() - welcoming the player                                                             </font>
+<font color=#008000>; </font>
+<font color=#008000>; uses print_str() </font>
+<font color=#008000>;      wait_for_key_pressed() </font>
+<font color=#008000>;      clear_screen() </font>
+<font color=#008000>; </font>
+<font color=#008000>; Parameters: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#0000FF>proc</font> draw_welcome_message 
+      
+     <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+      
+     <font color=#0000FF>lea</font> <font color=#C80000>ax</font>,<font color=#0064C8>[</font>welcome_message<font color=#0064C8>]</font>     <font color=#008000>;set the address of [welcome_message] in ax  </font>
+     <font color=#0000FF>call</font> print_str               <font color=#008000>;prints [welcome_message] </font>
+      
+     <font color=#0000FF>call</font> wait_for_key_pressed    <font color=#008000>; receives a key </font>
+     <font color=#0000FF>call</font> clear_screen            <font color=#008000>; clears the console </font>
+      
+     <font color=#0000FF>pop</font> <font color=#C80000>ax</font> 
+           
+    <font color=#0000FF>ret</font> 
+endp    
+<font color=#008000>;---------------------------------------------------                                                 </font>
+<font color=#008000>; maze_getxy() - Load maze character from maze array </font>
+<font color=#008000>;        </font>
+<font color=#008000>; Parameters: </font>
+<font color=#008000>;   dl - x </font>
+<font color=#008000>;   dh - y </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;  al - the char in the place of [current_x] and [current_y]  </font>
+<font color=#008000>;       ah will stay as before </font>
+<font color=#008000>;  </font>
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#0000FF>proc</font> maze_getxy 
+                 
+        
+     <font color=#0000FF>push</font> <font color=#C80000>bx</font> 
+      
+     <font color=#008000>;set ax to the start of the current row </font>
+     <font color=#0000FF>mov</font>  <font color=#C80000>al</font>,<font color=#C80000>dh</font> 
+      
+     <font color=#0000FF>mov</font>  <font color=#C80000>bl</font>,SIZE_OF_X 
+     <font color=#0000FF>mul</font>  <font color=#C80000>bl</font> 
+      
+     <font color=#008000>;find column </font>
+     <font color=#0000FF>add</font>  <font color=#C80000>al</font>,<font color=#C80000>dl</font> 
+   
+     <font color=#008000>;mov the char to ax  </font>
+     <font color=#0000FF>lea</font> <font color=#C80000>bx</font>, <font color=#0064C8>[</font>the_maze<font color=#0064C8>]</font> 
+     <font color=#0000FF>add</font> <font color=#C80000>bx</font>, <font color=#C80000>ax</font> 
+     <font color=#0000FF>mov</font> <font color=#C80000>al</font>, <font color=#0064C8>[</font><font color=#C80000>bx</font><font color=#0064C8>]</font>  
+ 
+     <font color=#0000FF>pop</font> <font color=#C80000>bx</font>  
+      
+    <font color=#0000FF>ret</font> 
+endp     
+ 
+ 
+<font color=#008000>;----------------------------------- </font>
+<font color=#008000>;draw_maze() - Draws the maze </font>
+<font color=#008000>;  </font>
+<font color=#008000>; (uses PRINT_STR)      </font>
+<font color=#008000>; </font>
+<font color=#008000>; Parameters: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;  </font>
+<font color=#008000>;------------------------------------ </font>
+<font color=#0000FF>proc</font> draw_maze 
+         
+        <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+         
+        <font color=#0000FF>lea</font> <font color=#C80000>ax</font>,<font color=#0064C8>[</font>the_maze<font color=#0064C8>]</font>  <font color=#008000>;ax contains now the address of the maze </font>
+        <font color=#0000FF>call</font> PRINT_STR 
+         
+        <font color=#0000FF>pop</font> <font color=#C80000>ax</font> 
+        <font color=#0000FF>ret</font> 
+endp 
+     
+     
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#008000>;draw_char_at_position() - draws char at position xy  </font>
+<font color=#008000>; </font>
+<font color=#008000>;uses print_char() </font>
+<font color=#008000>;uses set_cursor() </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;   al - ascii char to write </font>
+<font color=#008000>;   dl - x </font>
+<font color=#008000>;   dh - y </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;  </font>
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#0000FF>proc</font> draw_char_at_position 
+     
+      
+       <font color=#0000FF>call</font> set_cursor 
+       <font color=#0000FF>call</font> print_char 
+       
+     <font color=#0000FF>ret</font> 
+endp    
+ 
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#008000>;set_cursor() - move the cursor to xy  </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;   dh - y </font>
+<font color=#008000>;   dl - x </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;  </font>
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#0000FF>proc</font> set_cursor 
+     
+       <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+ 
+       <font color=#0000FF>mov</font> <font color=#C80000>ah</font>,2 
+       <font color=#0000FF>int</font> 10h 
+        
+       <font color=#0000FF>pop</font> <font color=#C80000>ax</font> 
+       
+     <font color=#0000FF>ret</font> 
+endp 
+ 
+ 
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#008000>;wait_for_key_pressed() - waiting for key </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;  none </font>
+<font color=#008000>;  </font>
+<font color=#008000>;Returns: </font>
+<font color=#008000>;   ah - BIOS scan code </font>
+<font color=#008000>;   al - ascii char </font>
+<font color=#008000>;--------------------------------------------------- </font>
+<font color=#0000FF>proc</font> wait_for_key_pressed 
+     
+    <font color=#0000FF>mov</font> <font color=#C80000>ax</font>,0 
+    <font color=#0000FF>int</font> 16h 
+ 
+   <font color=#0000FF>ret</font> 
+    
+endp 
+ 
+ 
+<font color=#008000>;------------------------------------------------------------------------------ </font>
+<font color=#008000>;convert_key_pressed() - converts the key that was pressed to a number </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;  ah - BIOS scan code </font>
+<font color=#008000>;  al - ascii char </font>
+<font color=#008000>;  </font>
+<font color=#008000>;Returns: </font>
+<font color=#008000>;   al - switch:left=1, right=2, up=3, down=4, Q=0, q=0, another key (ignore)=5 </font>
+<font color=#008000>;------------------------------------------------------------------------------ </font>
+<font color=#0000FF>proc</font> convert_key_pressed 
+          
+        <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,ascii_CapQ             <font color=#008000>;does the player wants to quit?  </font>
+        <font color=#0000FF>jne</font> do_not_quit               <font color=#008000>;maybe </font>
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,quit                   <font color=#008000>;yes he wants to quit </font>
+        <font color=#0000FF>jmp</font> convert_done                           
+     
+    do_not_quit:                       
+        <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,ascii_SmallQ           <font color=#008000>;does the player wants to quit? </font>
+        <font color=#0000FF>jne</font> do_not_quit_its_an_arrow 
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,quit                   <font color=#008000>;yes he wants to quit </font>
+        <font color=#0000FF>jmp</font> convert_done  
+     
+    do_not_quit_its_an_arrow:          
+        <font color=#0000FF>cmp</font> <font color=#C80000>ax</font>,ascii_left             <font color=#008000>;was the left arrow pressed? </font>
+        <font color=#0000FF>jne</font> its_not_left              <font color=#008000>;no its not </font>
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,left_arrow             <font color=#008000>;yes it does </font>
+        <font color=#0000FF>jmp</font> convert_done 
+     
+    its_not_left: 
+        <font color=#0000FF>cmp</font> <font color=#C80000>ax</font>,ascii_right            <font color=#008000>;was the right arrow pressed?   </font>
+        <font color=#0000FF>jne</font> its_not_right             <font color=#008000>;no its not </font>
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,right_arrow            <font color=#008000>;yes it does </font>
+        <font color=#0000FF>jmp</font> convert_done 
+     
+    its_not_right: 
+        <font color=#0000FF>cmp</font> <font color=#C80000>ax</font>,ascii_up               <font color=#008000>;was the up arrow pressed? </font>
+        <font color=#0000FF>jne</font> its_not_up                <font color=#008000>;no its not </font>
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,up_arrow               <font color=#008000>;yes it does </font>
+        <font color=#0000FF>jmp</font> convert_done 
+     
+    its_not_up: 
+        <font color=#0000FF>cmp</font> <font color=#C80000>ax</font>,ascii_down             <font color=#008000>;was the down arrow pressed? </font>
+        <font color=#0000FF>jne</font> another_key               <font color=#008000>;no its not </font>
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,down_arrow             <font color=#008000>;yes it does </font>
+        <font color=#0000FF>jmp</font> convert_done 
+         
+    another_key:            
+        <font color=#0000FF>mov</font> <font color=#C80000>al</font>,5 
+         
+    convert_done: 
+   <font color=#0000FF>ret</font>  
+endp 
+ 
+ 
+<font color=#008000>;---------------------------------------------------------------------------------------- </font>
+<font color=#008000>;wait_for_key_pressed_and_then_convert_it()- waiting for key and converts it to num if the  </font>
+<font color=#008000>;key that pressed equals to ignore(=5), the function will wait for another key to be pressed </font>
+<font color=#008000>; </font>
+<font color=#008000>;  uses wait_for_key_pressed()   </font>
+<font color=#008000>;       convert_key_pressed() </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;  none </font>
+<font color=#008000>;   </font>
+<font color=#008000>;  </font>
+<font color=#008000>;Returns: </font>
+<font color=#008000>;   al - switch:left=1, right=2, up=3, down=4, Q=0, q=0, another key (ignore)=5 </font>
+<font color=#008000>;---------------------------------------------------------------------------------------- </font>
+<font color=#0000FF>proc</font> wait_for_key_pressed_and_then_convert_it 
+       
+      the_key_that_was_pressed_isnt_relevant: 
+       
+      <font color=#0000FF>call</font> wait_for_key_pressed                 <font color=#008000>;wait for a key to be pressed </font>
+      <font color=#0000FF>call</font> convert_key_pressed                  <font color=#008000>; convert the key </font>
+       
+      <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,ignore                             <font color=#008000>; if the key isnt relevant wait again for a key else do nothing </font>
+      <font color=#0000FF>je</font> the_key_that_was_pressed_isnt_relevant 
+    <font color=#0000FF>ret</font> 
+endp      
+ 
+ 
+<font color=#008000>;------------------------------------------------------------------- </font>
+<font color=#008000>;Key_to_new_position()-receives the current position with the direction to move </font>
+<font color=#008000>;                       returns the next position </font>
+<font color=#008000>;    </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;   [current_x] - x </font>
+<font color=#008000>;   [current_y] - y </font>
+<font color=#008000>;            al - switch:left=1, right=2, up=3, down=4 </font>
+<font color=#008000>;Returns:   </font>
+<font color=#008000>;   [next_x] - x of new position </font>
+<font color=#008000>;   [next_y] - y of new position   </font>
+<font color=#008000>;------------------------------------------------------------------- </font>
+  <font color=#0000FF>proc</font> Key_to_new_position 
+     
+            <font color=#0000FF>push</font> <font color=#C80000>dx</font> 
+             
+            <font color=#0000FF>mov</font> <font color=#C80000>dl</font>,<font color=#0064C8>[</font>current_x<font color=#0064C8>]</font>  
+            <font color=#0000FF>mov</font> <font color=#C80000>dh</font>,<font color=#0064C8>[</font>current_y<font color=#0064C8>]</font> 
+             
+            <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,left_arrow             <font color=#008000>;does the player wants to move left </font>
+            <font color=#0000FF>jne</font> left_arrow_wasnt_pressed  <font color=#008000>;if not continue else jump  </font>
+                 
+            <font color=#0000FF>dec</font> <font color=#C80000>dl</font>                        <font color=#008000>;move the x to the left (x-1) </font>
+             
+            <font color=#0000FF>jmp</font> new_position_done         <font color=#008000>;arrange the registers and finish </font>
+         
+        left_arrow_wasnt_pressed: 
+            
+           <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,right_arrow             <font color=#008000>;does the player wants to move right </font>
+           <font color=#0000FF>jne</font> right_arrow_wasnt_pressed  <font color=#008000>;if not jump else continue  </font>
+            
+           <font color=#0000FF>inc</font> <font color=#C80000>dl</font>                         <font color=#008000>;move the x to the right (x+1) </font>
+            
+           <font color=#0000FF>jmp</font> new_position_done          <font color=#008000>;arrange the registers and finish </font>
+         
+        right_arrow_wasnt_pressed: 
+            
+           <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,up_arrow                <font color=#008000>;does the player wants to move up </font>
+           <font color=#0000FF>jne</font> up_arrow_wasnt_pressed     <font color=#008000>;if not jump else continue </font>
+            
+           <font color=#0000FF>dec</font> <font color=#C80000>dh</font>                         <font color=#008000>;move the y up (y-1) </font>
+            
+           <font color=#0000FF>jmp</font> new_position_done          <font color=#008000>;arrange the registers and finish </font>
+            
+        up_arrow_wasnt_pressed:           <font color=#008000>;if you arrived here the player wants to move down </font>
+           
+            <font color=#0000FF>inc</font> <font color=#C80000>dh</font>                        <font color=#008000>;move the y down (y+1) </font>
+             
+            <font color=#0000FF>jmp</font> new_position_done 
+             
+        new_position_done:   
+                                           
+           <font color=#0000FF>mov</font> <font color=#0064C8>[</font>next_x<font color=#0064C8>]</font>,<font color=#C80000>dl</font>                <font color=#008000>;set next x  </font>
+           <font color=#0000FF>mov</font> <font color=#0064C8>[</font>next_y<font color=#0064C8>]</font>,<font color=#C80000>dh</font>                <font color=#008000>;set next y     </font>
+           <font color=#0000FF>pop</font> <font color=#C80000>dx</font> 
+      <font color=#0000FF>ret</font> 
+endp  
+ 
+ 
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#008000>;check_legal_move() -check if the user is allowed to move to xy (there is a space) </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;  [next_x] - x of the position to check </font>
+<font color=#008000>;  [next_y] - y of the position to check </font>
+<font color=#008000>; </font>
+<font color=#008000>;returns: </font>
+<font color=#008000>;   bl- is it a leagal movement? switch: 0=false 1=true </font>
+<font color=#008000>;-----------------------------------------------------------------------      </font>
+<font color=#0000FF>proc</font> check_legal_move 
+           
+          <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+          <font color=#0000FF>push</font> <font color=#C80000>dx</font> 
+           
+          <font color=#0000FF>mov</font> <font color=#C80000>dl</font>,<font color=#0064C8>[</font>next_x<font color=#0064C8>]</font> 
+          <font color=#0000FF>mov</font> <font color=#C80000>dh</font>,<font color=#0064C8>[</font>next_y<font color=#0064C8>]</font> 
+          <font color=#0000FF>call</font> maze_getxy               <font color=#008000>;what's the ascii char at xy? </font>
+                                        
+          <font color=#0000FF>cmp</font> <font color=#C80000>al</font>,space_ascii            <font color=#008000>;the movement is legal? </font>
+          <font color=#0000FF>jne</font> ilegal_movement 
+           
+          <font color=#0000FF>mov</font> <font color=#C80000>bl</font>,true                   <font color=#008000>;legal_movement=true </font>
+          <font color=#0000FF>jmp</font> finish_check_legal_move 
+           
+         ilegal_movement: 
+           
+          <font color=#0000FF>mov</font> <font color=#C80000>bl</font>,false                  <font color=#008000>;ilegal_movement=false </font>
+           
+          <font color=#0000FF>mov</font> <font color=#C80000>ah</font>,<font color=#0064C8>[</font>current_x<font color=#0064C8>]</font>            <font color=#008000>;reset [next_x] to [current_x]  </font>
+          <font color=#0000FF>mov</font> <font color=#0064C8>[</font>next_x<font color=#0064C8>]</font>,<font color=#C80000>ah</font> 
+          <font color=#0000FF>mov</font> <font color=#C80000>ah</font>,<font color=#0064C8>[</font>current_y<font color=#0064C8>]</font>            <font color=#008000>;reset [next_y] to [current_y] </font>
+          <font color=#0000FF>mov</font> <font color=#0064C8>[</font>next_y<font color=#0064C8>]</font>,<font color=#C80000>ah</font> 
+           
+         finish_check_legal_move: 
+       
+         <font color=#0000FF>pop</font> <font color=#C80000>dx</font> 
+         <font color=#0000FF>pop</font> <font color=#C80000>ax</font> 
+       
+      <font color=#0000FF>ret</font> 
+endp  
+ 
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#008000>;check_win()- checks if x, y is the exit </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;   [next_x] - x </font>
+<font color=#008000>;   [next_y] - y </font>
+<font color=#008000>; </font>
+<font color=#008000>;Returns: </font>
+<font color=#008000>;   bl - is it the exit? switch: 0=false 1=true </font>
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#0000FF>proc</font> check_win 
+      
+        <font color=#0000FF>cmp</font> <font color=#0064C8>[</font>next_x<font color=#0064C8>]</font>,SIZE_Xborder              <font color=#008000>;is x of the exit? </font>
+        <font color=#0000FF>je</font>  its_an_exit 
+        
+        <font color=#0000FF>cmp</font> <font color=#0064C8>[</font>next_x<font color=#0064C8>]</font>,MINIMUM_Xborder           <font color=#008000>;is x of the exit? </font>
+        <font color=#0000FF>je</font>  its_an_exit 
+        
+        <font color=#0000FF>cmp</font> <font color=#0064C8>[</font>next_y<font color=#0064C8>]</font>,SIZE_Yborder              <font color=#008000>;is y of the exit? </font>
+        <font color=#0000FF>je</font>  its_an_exit 
+        
+        <font color=#0000FF>cmp</font> <font color=#0064C8>[</font>next_y<font color=#0064C8>]</font>,MINIMUM_Yborder           <font color=#008000>;is y of the exit? </font>
+        <font color=#0000FF>jne</font>  the_player_isnt_moving_to_the_exit 
+        
+      its_an_exit: 
+        
+        <font color=#0000FF>mov</font> <font color=#C80000>bl</font>,1                               <font color=#008000>;it is the exit, the player has won </font>
+        <font color=#0000FF>jmp</font> check_win_done 
+         
+        
+     the_player_isnt_moving_to_the_exit: 
+        
+       <font color=#0000FF>mov</font> <font color=#C80000>bl</font>,0                                <font color=#008000>;the player didnt win yet </font>
+        
+     check_win_done: 
+        
+    <font color=#0000FF>ret</font> 
+endp 
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#008000>;hide_cursor()-hide blinking text cursor </font>
+<font color=#008000>; </font>
+<font color=#008000>;Parameters: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>; </font>
+<font color=#008000>;returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#0000FF>proc</font> hide_cursor 
+      
+       <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+       <font color=#0000FF>push</font> <font color=#C80000>cx</font> 
+        
+       <font color=#0000FF>mov</font> <font color=#C80000>ch</font>, 32 
+       <font color=#0000FF>mov</font> <font color=#C80000>ah</font>, 1 
+       <font color=#0000FF>int</font> 10h 
+ 
+       <font color=#0000FF>pop</font> <font color=#C80000>cx</font> 
+       <font color=#0000FF>pop</font> <font color=#C80000>ax</font> 
+        
+     <font color=#0000FF>ret</font> 
+endp 
+ 
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#008000>;draw_congratulations_message() - congrats the player </font>
+<font color=#008000>;    </font>
+<font color=#008000>;   uses print_str() </font>
+<font color=#008000>;        wait_for_key_pressed() </font>
+<font color=#008000>;        clear_screen() </font>
+<font color=#008000>; </font>
+<font color=#008000>; Parameters: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;----------------------------------------------------------------------- </font>
+<font color=#0000FF>proc</font> draw_congratulations_message 
+     
+        <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+      
+        <font color=#0000FF>call</font> clear_screen                <font color=#008000>; clears the console </font>
+         
+        <font color=#0000FF>lea</font> <font color=#C80000>ax</font>,<font color=#0064C8>[</font>congratulations_message<font color=#0064C8>]</font> <font color=#008000>;set the address of [welcome_message] in ax  </font>
+        <font color=#0000FF>call</font> print_str                   <font color=#008000>;prints [welcome_message] </font>
+             
+        <font color=#0000FF>call</font> wait_for_key_pressed        <font color=#008000>; receives a key </font>
+         
+        <font color=#0000FF>pop</font> <font color=#C80000>ax</font> 
+         
+     <font color=#0000FF>ret</font> 
+endp 
+ 
+<font color=#008000>;--------------------------------------------------------------------------------------------------- </font>
+<font color=#008000>;set_current_position_to_next_position() - sets [current_x] to [next_x] &amp; [current_y] to [next_y] </font>
+<font color=#008000>; </font>
+<font color=#008000>; Parameters: </font>
+<font color=#008000>;   x - [current_x] </font>
+<font color=#008000>;   y - [current_y] </font>
+<font color=#008000>;   x - [next_x] </font>
+<font color=#008000>;   y - [next_y] </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   the changed [current_x]&amp;[current_y] &amp; [next_x],[next_y] </font>
+<font color=#008000>;--------------------------------------------------------------------------------------------------- </font>
+<font color=#0000FF>proc</font> set_current_position_to_next_position 
+ 
+    <font color=#0000FF>push</font> <font color=#C80000>ax</font> 
+     
+    <font color=#0000FF>mov</font>  <font color=#C80000>al</font>,<font color=#0064C8>[</font>next_x<font color=#0064C8>]</font>     <font color=#008000>;set [current_x] </font>
+    <font color=#0000FF>mov</font>  <font color=#0064C8>[</font>current_x<font color=#0064C8>]</font>,<font color=#C80000>al</font>                                
+    <font color=#0000FF>mov</font>  <font color=#C80000>al</font>,<font color=#0064C8>[</font>next_y<font color=#0064C8>]</font>     <font color=#008000>;set [current_y] </font>
+    <font color=#0000FF>mov</font>  <font color=#0064C8>[</font>current_y<font color=#0064C8>]</font>,<font color=#C80000>al</font> 
+     
+    <font color=#0000FF>pop</font>  <font color=#C80000>ax</font> 
+ 
+    <font color=#0000FF>ret</font> 
+endp 
+ 
+<font color=#008000>;--------------------------------------------------------------------------------------------------- </font>
+<font color=#008000>;hide_cursor_and_draw_welcome_message() -hide blinking text cursor and welcoming the player </font>
+<font color=#008000>; </font>
+<font color=#008000>; uses hide_cursor() </font>
+<font color=#008000>;      draw_welcome_message() </font>
+<font color=#008000>; </font>
+<font color=#008000>; Parameters: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>; </font>
+<font color=#008000>; Returns: </font>
+<font color=#008000>;   none </font>
+<font color=#008000>;--------------------------------------------------------------------------------------------------- </font>
+<font color=#0000FF>proc</font> hide_cursor_and_draw_welcome_message 
+         
+        <font color=#0000FF>call</font> hide_cursor 
+     
+        <font color=#0000FF>call</font> draw_welcome_message 
+    <font color=#0000FF>ret</font> 
+endp     
+ 
+<font color=#008000>; </font>
+<font color=#008000>; Functions provided to us </font>
+<font color=#008000>; </font>
+<font color=#000064>include</font> <font color=#800080>"..\MySource\provided.asm"</font> 
+</font></pre>
+<center> <font color=#FFFFFF>;</font> <a href="http://www.emu8086.com" target="_blank"><font face=verdana size=1 color=#000000> - asm2html - </font></a> </center>
+<!-- emu8086 version 4.07    -->
+<!-- STOP AUTOMATIC ASM TO HTML EXPORT -->
+
+
+
+
+ 
+ 
+<!-- *** -->
+ 
+ 
+</body>
+</html>
